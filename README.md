@@ -3,13 +3,13 @@
 #### *Tim Noreliusson Lingestedt*
 
 ## *__V45 - Användare, diskar och databas__*
-- [x] [V45]()
+- [ ] [V45](https://github.com/03timnor/Linux_MOV25/tree/main/V45)
 
 ## *__V46 - User data och egna tjänster__*
-- [x] [V46]()
+- [ ] [V46](https://github.com/03timnor/Linux_MOV25/tree/main/V46)
 
 ## *__V47 - Last, loggar och schemalagda jobb__*
-- [x] [V47]()
+- [ ] [V47](https://github.com/03timnor/Linux_MOV25/tree/main/V47)
 
 ## *__V48 - Loggar, egna mätvärden och självläkning__*
-- [x] [V48]()
+- [ ] [V48](https://github.com/03timnor/Linux_MOV25/tree/main/V48)
