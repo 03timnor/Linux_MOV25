@@ -102,12 +102,12 @@ ssh novatrix-webb
 
 ```bash
 sudo visudo -f /etc/sudoers.d/drift  # innehåll: %drift ALL=(ALL) NOPASSWD: ALL
-sudo chmod 0440 /etc/sudoers.d/drift
 ```
 
 #### *sudo*-kontroll:
 
 ```bash
+sudo chmod 0440 /etc/sudoers.d/drift
 sudo whoami
 sudo visudo -c
 sudo -l -U ops-anna
