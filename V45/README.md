@@ -204,7 +204,7 @@ Man kan se att det är avstängt i nästa steg "*3. Verifiering*"
 
 `wp-config.php` hade `644`, alltså läsbar för alla. Den innehåller databasens lösenord (`DB_PASSWORD`), och *ops-anna* kunde läsa det utan *sudo*.
 
-Rättat med `chmod 640`, eftersom "övriga" inte ska kunna läsa filen. Webbplatsen fungerar fortfarande, eftersom *PHP* läser filen som `apache`, som är ägaren. Testet visade dock att det inte räcker här: även med `600` kunde *ops-anna* läsa filen, och `chown root` nekades. Access pointen gör att *alla* läsningar når *EFS* som uid 48, alltså som ägaren. *Linux*-rättigheterna kan därför inte skilja användarna åt.
+Rättat med `chmod 640`, eftersom "övriga" inte ska kunna läsa filen. Webbplatsen fungerar fortfarande, eftersom *PHP* läser filen som `apache`, som är ägaren. Testet visade dock att det inte räcker här: även med `600` kunde *ops-anna* läsa filen, och `chown root` nekades. Access pointen gör att alla läsningar når *EFS* som uid 48, alltså som ägaren. *Linux*-rättigheterna kan därför inte skilja användarna åt.
 
 Alla som har ett skal på webbservern kan läsa lösenordet, dels via filen på *EFS*, dels via *SSM* (`/novatrix/db/wordpress-losenord`). Serverns *IAM*-roll får läsa *SSM*, och rollens nycklar kan hämtas av alla lokala användare från metadatatjänsten.
 
