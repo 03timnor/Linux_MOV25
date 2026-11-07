@@ -10,7 +10,7 @@ Linux-administration på en *EC2*-server (*Amazon Linux*).
 
 ### *__1. Kommandon__*
 
-#### Skapa nyckelpar:
+#### __Skapa nyckelpar:__
 
 *__OBS!__* På ens egna dator via en separat *bash* terminal.
 
@@ -20,7 +20,7 @@ ssh-keygen -t ed25519 -f ops-anna
 cat ops-anna.pub
 ```
 
-#### Ta fram servrarnas IP-adresser:
+#### __Ta fram servrarnas IP-adresser:__
 
 ```bash
 aws ec2 describe-instances --region eu-north-1 \
@@ -29,7 +29,7 @@ aws ec2 describe-instances --region eu-north-1 \
   --output table
 ```
 
-#### Skapa *ops-anna* på *Bastion*:
+#### __Skapa *ops-anna* på *Bastion*:__
 
 - Logga in på *Bastion* (*ec2-user*):
 ```bash
@@ -48,7 +48,7 @@ sudo chmod 600 /home/ops-anna/.ssh/authorized_keys
 exit
 ```
 
-#### Skapa *ops-anna* på webbserver:
+#### __Skapa *ops-anna* på webbserver:__
 
 - Logga in på *Webbserver* (*ec2-user*):
 ```bash
@@ -72,7 +72,7 @@ sudo chmod 600 /home/ops-anna/.ssh/authorized_keys
 sudo cat /home/ops-anna/.ssh/authorized_keys
 ```
 
-#### Skapa *SSH*-config:
+#### __Skapa *SSH*-config:__
 
 *__OBS!__* På ens egna dator via en separat *bash* terminal.
 
@@ -92,22 +92,21 @@ EOF
 cat ~/.ssh/config
 ```
 
-#### Skapa *sudo*-regel:
+#### __Skapa *sudo*-regel:__
 
-
-(Körs på webbservern)
+(Körs på webbservern, *ec2-user*)
 
 ```bash
 sudo visudo -f /etc/sudoers.d/drift  # innehåll: %drift ALL=(ALL) NOPASSWD: ALL
 ```
 
-#### Logga in som *ops-anna*:
+#### __Logga in som *ops-anna*:__
 
 ```bash
 ssh novatrix-webb
 ```
 
-#### *sudo*-kontroll:
+#### __*sudo*-kontroll:__
 
 (Körs på webbservern)
 
@@ -118,7 +117,7 @@ sudo visudo -c
 sudo -l -U ops-anna
 ```
 
-#### *SSH*-inställningar:
+#### __*SSH*-inställningar:__
 
 (Körs på webbservern)
 
@@ -127,7 +126,7 @@ sudo sshd -T | grep -iE "authentication|forwarding|permitroot"
 sudo cat /etc/ssh/sshd_config.d/10-novatrix.conf
 ```
 
-#### Lösenordsinloggning-kontroll:
+#### __Lösenordsinloggning-kontroll:__
 
 *__OBS!__* På ens egna dator via en separat *bash* terminal.
 
@@ -136,7 +135,7 @@ ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password novatrix-web
 ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password ops-anna@51.20.82.182
 ```
 
-#### /var/www/html-kontroll:
+#### __*/var/www/html*-kontroll:__
 
 (Körs på webbservern)
 
@@ -148,7 +147,7 @@ sudo -u ops-anna grep DB_PASSWORD /var/www/html/wp-config.php
 sudo find /var/www/html -perm -o+w
 ```
 
-#### *chmod* och *chown* test:
+#### __*chmod* och *chown* test:__
 
 (Körs på webbservern)
 
@@ -161,7 +160,7 @@ sudo chmod 640 /var/www/html/wp-config.php
 stat -c '%U:%G %a %n' /var/www/html/wp-config.php
 ```
 
-#### Uppdaterings-kontroll:
+#### __Uppdaterings-kontroll:__
 
 (Körs på webbservern)
 
@@ -170,6 +169,84 @@ cat /etc/os-release
 rpm -q system-release
 dnf check-release-update
 ```
+
+### *__2. Uppgiftens övriga frågeställningar__*
+
+#### __*ops-anna* har inget lösenord, eftersom hon loggar in med nyckel. Ta reda på vad det betyder för *sudo*, och välj och motivera en lösning__
+
+*sudo* kräver användarens eget lösenord. *ops-anna* har inget, och i `/etc/shadow` står `!!` (låst). Inget hon skriver kan därför stämma, så *sudo* fungerar inte för henne. Inloggningen fungerar ändå, eftersom *SSH*-nycklar inte använder lösenordet.
+
+__Lösning: `NOPASSWD` för gruppen *drift*__ i `/etc/sudoers.d/drift`:
+
+    %drift ALL=(ALL) NOPASSWD: ALL
+
+Motivering:
+- Samma modell som *AWS* använder för *ec2-user*. Inget lösenord som kan läcka eller som behöver hanteras.
+- Regeln gäller gruppen, inte personen. Nya driftpersoner läggs bara till i *drift*.
+- Nyckeln blir enda faktorn och skyddas därför med en lösenfras.
+- Filen skapades med `visudo`, som kontrollerar syntaxen, och har rättigheterna `0440`.
+- Bastionen får ingen *sudo*-regel. Där behöver *ops-anna* bara hoppa vidare, vilket följer principen om minsta möjliga behörighet.
+
+Alternativet, ett lösenord enbart för *sudo*, ger två faktorer men ett extra lösenord att hantera.
+
+#### __Visa att inloggning med lösenord är avstängd i *SSH* och hur du tog reda på det__
+
+`sshd -T` visar den faktiska konfigurationen efter att alla filer lästs in: `passwordauthentication no` och `kbdinteractiveauthentication no`. Inställningarna kommer från `/etc/ssh/sshd_config.d/10-novatrix.conf`, som V45-skriptet skapar. *sshd* använder det första värdet den hittar, så filen vinner över *Amazon Linux* egen `50-redhat.conf`.
+
+Testat från min dator genom att tvinga fram lösenord (`-o PubkeyAuthentication=no -o PreferredAuthentications=password`). Både webbservern och bastionen svarar `Permission denied (publickey,gssapi-keyex,gssapi-with-mic)` utan att fråga efter lösenord. `password` finns inte bland de tillåtna metoderna.
+
+Man kan se att det är avstängt i nästa steg "*3. Verifiering*"
+
+#### __Förklara ägare och rättigheter på /var/www/html . Finns det någon fil där med för öppna rättigheter? Vad betyder det, och hur rättar du det? WordPress sparar databasens lösenord i en av filerna i katalogen. Vem på servern kan läsa den?__
+
+Filen hade `644`, alltså läsbar för alla. Den innehåller databasens lösenord (`DB_PASSWORD`), och *ops-anna* kunde läsa det utan *sudo*.
+
+Rättat med `chmod 640`, eftersom "övriga" inte ska kunna läsa filen. Webbplatsen fungerar fortfarande, eftersom *PHP* läser filen som `apache`, som är ägaren. Testet visade dock att det inte räcker här: även med `600` kunde *ops-anna* läsa filen, och `chown root` nekades. Access pointen gör att *alla* läsningar når *EFS* som uid 48, alltså som ägaren. **Linux*-rättigheterna kan därför inte skilja användarna åt.
+
+Alla som har ett skal på webbservern hade kunnat läsa lösenordet, dels via filen på *EFS*, dels via *SSM* (`/novatrix/db/wordpress-losenord`). Serverns *IAM*-roll får läsa *SSM*, och rollens nycklar kan hämtas av alla lokala användare från metadatatjänsten.
+
+Skyddet ligger därför i lagren runt omkring:
+- Bara gruppen *drift* kommer in, och bara via bastionen med nyckel.
+- Databasanvändaren får bara logga in från webbnivån (`10.0.2.0/23`) och bara mot databasen *wordpress*.
+- *RDS* tar bara emot trafik från `web-sg`, kräver *TLS* och saknar publik IP.
+
+Bättre lösning vore att flytta lösenordet till en fil på lokal disk (root, `600`) som *php-fpm* läser, och att begränsa metadatatjänsten till root med *iptables*.
+
+#### __Ta reda på vilken version av Amazon Linux 2023 servern kör, om det finns en nyare, och hur uppdateringar fungerar i Amazon Linux 2023__
+
+Servern kör *Amazon Linux 2023.12.20261102*, med support till 2029-06-30. `dnf check-release-update` gav ingen utskrift, så det finns ingen nyare release.
+
+*AL2023* har versionerade paketförråd: servern är låst till sin release, och `dnf upgrade` uppdaterar bara inom den. Nyare releaser, med nya säkerhetsfixar, måste man byta till aktivt med `dnf upgrade --releasever=<version>` eller `--releasever=latest`. Fördelen är att samma *AMI* och samma kommando alltid ger exakt samma paket, så en testad release kan rullas ut oförändrad. Alternativet är att byta ut servern mot en ny från en nyare *AMI*. Det passar här, eftersom webbservern inte har eget tillstånd: allt ligger i *EFS*, *RDS* och *S3*.
+
+### *__3. Verifiering__*
+
+#### __Test av *chmod* och *chown* på *EFS*__
+
+![alt text](pictures/chmod_test.png)
+
+#### __*SSH*-inställningar:__
+
+![alt text](pictures/ssh_settings.png)
+
+#### __Lösenordsinloggning nekas:__
+
+![alt text](pictures/password_login.png)
+
+#### __*sudo*-regel:__
+
+![alt text](pictures/ops-anna_sudo.png)
+
+#### __Uppdaterings-kontroll:__
+
+![alt text](pictures/update_check.png)
+
+#### __Webbplats funferar efter ändring:__
+
+![alt text](pictures/website.png)
+
+#### __Ägare och rättigheter i */var/www/html*:__
+
+![alt text](pictures/wp_config_readable.png)
 
 ## Modul 2: En extra disk
 
