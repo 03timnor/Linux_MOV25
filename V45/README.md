@@ -4,7 +4,7 @@ Repository: https://github.com/03timnor/Linux_MOV25
 
 *Tim Noreliusson Lingestedt, 2026-11-07*
 
-Linux-administration på en *EC2*-server (*Amazon Linux*).
+Linux-administration på *EC2*-servrar (*Amazon Linux*), en bastion och en webbserver.
 
 ## Modul 1: Användare, behörigheter och åtkomst
 
@@ -36,7 +36,8 @@ aws ec2 describe-instances --region eu-north-1 \
 ssh -i ~/.ssh/AWS_MOV25.pem ec2-user@51.20.82.182
 ```
 
-- Skapa konto, grupp, lägg till publik *SSH* nyckel på servern och ge *ops-anna* rättigheter till nyckeln:
+- Skapa grupp och konto, lägg till den publika *SSH*-nyckeln och sätt ägare och rättigheter så att *sshd* godkänner nyckeln:
+
 ```bash
 sudo groupadd drift
 sudo useradd -m -G drift ops-anna
@@ -57,7 +58,7 @@ ssh -i ~/.ssh/AWS_MOV25.pem \
   ec2-user@10.0.2.50
 ```
 
-- Skapa konto, grupp, lägg till publik *SSH* nyckel på servern och ge *ops-anna* rättigheter till nyckeln:
+- Skapa grupp och konto, lägg till den publika *SSH*-nyckeln och sätt ägare och rättigheter så att *sshd* godkänner nyckeln:
 
 ```bash
 findmnt /var/www/html
@@ -126,7 +127,7 @@ sudo sshd -T | grep -iE "authentication|forwarding|permitroot"
 sudo cat /etc/ssh/sshd_config.d/10-novatrix.conf
 ```
 
-#### __Lösenordsinloggning-kontroll:__
+#### __Kontroll av lösenordsinloggning:__
 
 *__OBS!__* På ens egna dator via en separat *bash* terminal.
 
@@ -183,7 +184,7 @@ __Lösning: `NOPASSWD` för gruppen *drift*__ i `/etc/sudoers.d/drift`:
 Motivering:
 - Samma modell som *AWS* använder för *ec2-user*. Inget lösenord som kan läcka eller som behöver hanteras.
 - Regeln gäller gruppen, inte personen. Nya driftpersoner läggs bara till i *drift*.
-- Nyckeln blir enda faktorn och skyddas därför med en lösenfras.
+- Nyckeln blir enda faktorn och bör därför skyddas med en lösenfras.
 - Filen skapades med `visudo`, som kontrollerar syntaxen, och har rättigheterna `0440`.
 - Bastionen får ingen *sudo*-regel. Där behöver *ops-anna* bara hoppa vidare, vilket följer principen om minsta möjliga behörighet.
 
@@ -197,13 +198,15 @@ Testat från min dator genom att tvinga fram lösenord (`-o PubkeyAuthentication
 
 Man kan se att det är avstängt i nästa steg "*3. Verifiering*"
 
-#### __Förklara ägare och rättigheter på /var/www/html . Finns det någon fil där med för öppna rättigheter? Vad betyder det, och hur rättar du det? WordPress sparar databasens lösenord i en av filerna i katalogen. Vem på servern kan läsa den?__
+#### __Förklara ägare och rättigheter på /var/www/html. Finns det någon fil där med för öppna rättigheter? Vad betyder det, och hur rättar du det? WordPress sparar databasens lösenord i en av filerna i katalogen. Vem på servern kan läsa den?__
 
-Filen hade `644`, alltså läsbar för alla. Den innehåller databasens lösenord (`DB_PASSWORD`), och *ops-anna* kunde läsa det utan *sudo*.
+`/var/www/html` är inte lokal disk utan *EFS*, monterat via *NFS* över en *TLS*-tunnel (`findmnt` visar `127.0.0.1:/ nfs4`). Allt ägs av `apache:apache` (uid/gid 48), även filer som root skapade, eftersom *EFS*-access pointen tvingar alla anrop till uid 48. Filer har `644` och kataloger `755`. Inga filer är skrivbara för alla (`find -perm -o+w` gav inget). Filen med för öppna rättigheter är `wp-config.php`.
 
-Rättat med `chmod 640`, eftersom "övriga" inte ska kunna läsa filen. Webbplatsen fungerar fortfarande, eftersom *PHP* läser filen som `apache`, som är ägaren. Testet visade dock att det inte räcker här: även med `600` kunde *ops-anna* läsa filen, och `chown root` nekades. Access pointen gör att *alla* läsningar når *EFS* som uid 48, alltså som ägaren. **Linux*-rättigheterna kan därför inte skilja användarna åt.
+`wp-config.php` hade `644`, alltså läsbar för alla. Den innehåller databasens lösenord (`DB_PASSWORD`), och *ops-anna* kunde läsa det utan *sudo*.
 
-Alla som har ett skal på webbservern hade kunnat läsa lösenordet, dels via filen på *EFS*, dels via *SSM* (`/novatrix/db/wordpress-losenord`). Serverns *IAM*-roll får läsa *SSM*, och rollens nycklar kan hämtas av alla lokala användare från metadatatjänsten.
+Rättat med `chmod 640`, eftersom "övriga" inte ska kunna läsa filen. Webbplatsen fungerar fortfarande, eftersom *PHP* läser filen som `apache`, som är ägaren. Testet visade dock att det inte räcker här: även med `600` kunde *ops-anna* läsa filen, och `chown root` nekades. Access pointen gör att *alla* läsningar når *EFS* som uid 48, alltså som ägaren. *Linux*-rättigheterna kan därför inte skilja användarna åt.
+
+Alla som har ett skal på webbservern kan läsa lösenordet, dels via filen på *EFS*, dels via *SSM* (`/novatrix/db/wordpress-losenord`). Serverns *IAM*-roll får läsa *SSM*, och rollens nycklar kan hämtas av alla lokala användare från metadatatjänsten.
 
 Skyddet ligger därför i lagren runt omkring:
 - Bara gruppen *drift* kommer in, och bara via bastionen med nyckel.
