@@ -255,7 +255,7 @@ Servern kör *Amazon Linux 2023.12.20261102*, med support till 2029-06-30. `dnf 
 
 ### *__1. Kommandon__*
 
-#### *__Lista diskar__
+#### __Lista diskar__
 
 ```bash
 lsblk -f
@@ -345,6 +345,30 @@ df -hT / /data /var/www/html
 ```bash
 sudo du -xh --max-depth=1 /var 2>/dev/null | sort -rh | head -10
 ```
+
+### *__2. Verifiering__*
+
+#### __*XFS*-formattering:__
+
+![alt text](pictures/xfs_format.png)
+
+#### __Montering:__
+
+![alt text](pictures/mount_test.png)
+
+#### __Skriva och läsa:__
+
+![alt text](pictures/write_read_test.png)
+
+#### __Disken är kvar efter omstart:__
+
+![alt text](pictures/fstab.png)
+
+#### __*/var* utrymme:__
+
+![alt text](pictures/var_most_space.png)
+
+![alt text](pictures/var_space_used.png)
 
 ## Modul 3: Databasen från kommandoraden
 
