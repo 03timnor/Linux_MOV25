@@ -285,10 +285,9 @@ sudo mkdir -p /data
 
 #### __Montera disken tillfälligt:__
 
-
 ```bash
 sudo mount /dev/nvme1n1 /data
-sudo sf -h /data
+sudo df -h /data
 sudo findmnt /data
 ```
 Ska visa cirka *1GB* storlek och *xfs* som filsystem/*fstype*. 
@@ -296,7 +295,7 @@ Ska visa cirka *1GB* storlek och *xfs* som filsystem/*fstype*.
 #### __Testa disken__
 
 ```bash
-cho "TEST" | sudo tee /data/test.txt
+echo "TEST" | sudo tee /data/test.txt
 cat /data/test.txt
 ls -la /data
 ```
@@ -312,9 +311,7 @@ sudo blkid /dev/nvme1n1
 Säkerhetskopiera *fstab* och lägg till raden:
 
 ```bash
- sudo blkid /dev/nvme1n1
-/dev/nvme1n1: LABEL="testdisk" UUID="1fc5c8bb-c2bf-4a90-bbef-5cf696558a39" BLOCK_SIZE="512" TYPE="xfs"
-[ec2-user@ip-10-0-2-144 ~]$ sudo cp /etc/fstab /etc/fstab.bak
+sudo cp /etc/fstab /etc/fstab.bak
 UUID=$(sudo blkid -s UUID -o value /dev/nvme1n1)
 echo "UUID=$UUID  /data  xfs  defaults,nofail  0  2" | sudo tee -a /etc/fstab
 cat /etc/fstab
