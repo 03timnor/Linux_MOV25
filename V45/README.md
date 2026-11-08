@@ -261,13 +261,13 @@ Servern kör *Amazon Linux 2023.12.20261102*, med support till 2029-06-30. `dnf 
 lsblk -f
 ```
 
-#### *__Kontrollera vas som finns på disken:__
+#### *__Kontrollera vad som finns på disken:__
 
 ```bash
 sudo file -s /dev/nvme1n1
 ```
 
-(Svarar den *data* så¨är den tom/inget filsystem och måste formateras innan användning).
+(Svarar den *data* så är den tom/inget filsystem och måste formateras innan användning).
 
 #### __Formatera disk:__
 
@@ -275,7 +275,7 @@ sudo file -s /dev/nvme1n1
 sudo mkfs.xfs -L testdisk  /dev/nvme1n1
 ```
 
-(Formaterar disken med filsystem *XFS* som är standard i *Amazon Linux* )
+(Formaterar disken med filsystem *XFS* som är standard i *Amazon Linux 2023* )
 
 #### __Skapa monteringspunkt:__
 
@@ -345,7 +345,7 @@ sudo du -xh --max-depth=1 /var 2>/dev/null | sort -rh | head -10
 
 ### *__2. Verifiering__*
 
-#### __*XFS*-formattering:__
+#### __*XFS*-formatering:__
 
 ![alt text](pictures/xfs_format.png)
 
